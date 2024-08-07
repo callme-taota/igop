@@ -8,6 +8,7 @@ require (
 	github.com/goplus/gop v1.2.6
 	github.com/goplus/mod v0.13.10
 	github.com/goplus/reflectx v1.2.2
+	github.com/goplus/spx v1.0.0 // indirect
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/peterh/liner v1.2.2
 	github.com/qiniu/x v1.13.10
