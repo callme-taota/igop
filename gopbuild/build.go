@@ -22,6 +22,15 @@ package gopbuild
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x/errors
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x/gsh
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/goplus/spx
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/ajstarks/svgo
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/goplus/canvas
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/hajimehoshi/ebiten/v2
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/pkg/errors
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/audio
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/srwiley/oksvg
+//go:generate go run ../cmd/qexp -outdir ../pkg github.com/srwiley/rasterx
+//go:generate go run ../cmd/qexp -outdir ../pkg golang.org/x/image
 
 import (
 	"bytes"
@@ -45,7 +54,7 @@ import (
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/iox"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/ng"
-	_ "github.com/goplus/igop/pkg/github.com/goplus/spx"
+	//_ "github.com/goplus/igop/pkg/github.com/goplus/spx"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/errors"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/gsh"
 	_ "github.com/goplus/igop/pkg/io"
@@ -59,6 +68,16 @@ import (
 	_ "github.com/goplus/igop/pkg/runtime"
 	_ "github.com/goplus/igop/pkg/strconv"
 	_ "github.com/goplus/igop/pkg/strings"
+	//_ "github.com/goplus/spx"
+
+	_ "github.com/ajstarks/svgo"
+	_ "github.com/goplus/canvas"
+	_ "github.com/hajimehoshi/ebiten/v2"
+	_ "github.com/pkg/errors"
+	_ "github.com/qiniu/audio"
+	_ "github.com/qiniu/x"
+	_ "github.com/srwiley/oksvg"
+	_ "github.com/srwiley/rasterx"
 )
 
 type Class = cl.Class
