@@ -21,19 +21,10 @@ package gopbuild
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/goplus/gop/builtin/iox
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x/errors
 //go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x/gsh
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/goplus/spx
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/ajstarks/svgo
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/goplus/canvas
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/hajimehoshi/ebiten/v2
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/pkg/errors
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/audio
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/qiniu/x
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/srwiley/oksvg
-//go:generate go run ../cmd/qexp -outdir ../pkg github.com/srwiley/rasterx
-//go:generate go run ../cmd/qexp -outdir ../pkg golang.org/x/image
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	goast "go/ast"
 	"go/types"
@@ -46,6 +37,7 @@ import (
 	"github.com/goplus/gop/token"
 	"github.com/goplus/igop"
 	"github.com/goplus/mod/modfile"
+	"golang.org/x/tools/go/gcexportdata"
 
 	_ "github.com/goplus/igop/pkg/bufio"
 	_ "github.com/goplus/igop/pkg/context"
@@ -54,7 +46,6 @@ import (
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/iox"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/ng"
-	_ "github.com/goplus/igop/pkg/github.com/goplus/spx"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/errors"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/gsh"
 	_ "github.com/goplus/igop/pkg/io"
@@ -68,17 +59,10 @@ import (
 	_ "github.com/goplus/igop/pkg/runtime"
 	_ "github.com/goplus/igop/pkg/strconv"
 	_ "github.com/goplus/igop/pkg/strings"
-	//_ "github.com/goplus/spx"
-
-	_ "github.com/ajstarks/svgo"
-	_ "github.com/goplus/canvas"
-	_ "github.com/hajimehoshi/ebiten/v2"
-	_ "github.com/pkg/errors"
-	_ "github.com/qiniu/audio"
-	_ "github.com/qiniu/x"
-	_ "github.com/srwiley/oksvg"
-	_ "github.com/srwiley/rasterx"
 )
+
+//go:embed lib/*
+var lib embed.FS
 
 type Class = cl.Class
 
@@ -179,11 +163,6 @@ type Context struct {
 	gop  igop.Loader
 }
 
-type ContextSPX struct {
-	*Context
-	Pkg *types.Package
-}
-
 func ClassKind(fname string) (isProj, ok bool) {
 	ext := modfile.ClassExt(fname)
 	switch ext {
@@ -215,17 +194,6 @@ func NewContext(ctx *igop.Context) *Context {
 	return &Context{ctx: ctx, imp: igop.NewImporter(ctx), fset: token.NewFileSet(), gop: igop.NewTypesLoader(ctx, 0)}
 }
 
-func NewSPXContext(ctx *igop.Context, pkg *types.Package) *ContextSPX {
-	if ctx.IsEvalMode() {
-		ctx = igop.NewContext(0)
-	}
-	ctx.Mode |= igop.CheckGopOverloadFunc
-	return &ContextSPX{
-		Context: &Context{ctx: ctx, imp: igop.NewImporter(ctx), fset: token.NewFileSet(), gop: igop.NewTypesLoader(ctx, 0)},
-		Pkg:     pkg,
-	}
-}
-
 func isGopPackage(path string) bool {
 	if pkg, ok := igop.LookupPackage(path); ok {
 		if _, ok := pkg.UntypedConsts["GopPackage"]; ok {
@@ -236,17 +204,10 @@ func isGopPackage(path string) bool {
 }
 
 func (c *Context) Import(path string) (*types.Package, error) {
-	if isGopPackage(path) {
-		return c.gop.Import(path)
+	if pkg, ok := lookupPackageFromLib(path); ok {
+		return pkg, nil
 	}
-	return c.imp.Import(path)
-}
-
-func (c *ContextSPX) Import(path string) (*types.Package, error) {
 	if isGopPackage(path) {
-		if path == "github.com/goplus/spx" {
-			return c.Pkg, nil
-		}
 		return c.gop.Import(path)
 	}
 	return c.imp.Import(path)
@@ -350,4 +311,25 @@ func (c *Context) loadPackage(srcDir string, pkgs map[string]*ast.Package) (*Pac
 		return nil, err
 	}
 	return &Package{c.fset, out}, nil
+}
+
+func lookupPackageFromLib(path string) (*types.Package, bool) {
+	file, err := lib.Open("lib/" + path + ".a")
+	if err != nil {
+		return nil, false
+	}
+	defer file.Close()
+
+	r, err := gcexportdata.NewReader(file)
+	if err != nil {
+		return nil, false
+	}
+
+	const primary = "<primary>"
+	imports := make(map[string]*types.Package)
+	pkg, err := gcexportdata.Read(r, token.NewFileSet(), imports, primary)
+	if err != nil {
+		return nil, false
+	}
+	return pkg, true
 }
