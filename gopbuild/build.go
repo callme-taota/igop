@@ -54,7 +54,7 @@ import (
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/iox"
 	_ "github.com/goplus/igop/pkg/github.com/goplus/gop/builtin/ng"
-	//_ "github.com/goplus/igop/pkg/github.com/goplus/spx"
+	_ "github.com/goplus/igop/pkg/github.com/goplus/spx"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/errors"
 	_ "github.com/goplus/igop/pkg/github.com/qiniu/x/gsh"
 	_ "github.com/goplus/igop/pkg/io"
@@ -179,6 +179,11 @@ type Context struct {
 	gop  igop.Loader
 }
 
+type ContextSPX struct {
+	*Context
+	Pkg *types.Package
+}
+
 func ClassKind(fname string) (isProj, ok bool) {
 	ext := modfile.ClassExt(fname)
 	switch ext {
@@ -210,6 +215,17 @@ func NewContext(ctx *igop.Context) *Context {
 	return &Context{ctx: ctx, imp: igop.NewImporter(ctx), fset: token.NewFileSet(), gop: igop.NewTypesLoader(ctx, 0)}
 }
 
+func NewSPXContext(ctx *igop.Context, pkg *types.Package) *ContextSPX {
+	if ctx.IsEvalMode() {
+		ctx = igop.NewContext(0)
+	}
+	ctx.Mode |= igop.CheckGopOverloadFunc
+	return &ContextSPX{
+		Context: &Context{ctx: ctx, imp: igop.NewImporter(ctx), fset: token.NewFileSet(), gop: igop.NewTypesLoader(ctx, 0)},
+		Pkg:     pkg,
+	}
+}
+
 func isGopPackage(path string) bool {
 	if pkg, ok := igop.LookupPackage(path); ok {
 		if _, ok := pkg.UntypedConsts["GopPackage"]; ok {
@@ -221,6 +237,16 @@ func isGopPackage(path string) bool {
 
 func (c *Context) Import(path string) (*types.Package, error) {
 	if isGopPackage(path) {
+		return c.gop.Import(path)
+	}
+	return c.imp.Import(path)
+}
+
+func (c *ContextSPX) Import(path string) (*types.Package, error) {
+	if isGopPackage(path) {
+		if path == "github.com/goplus/spx" {
+			return c.Pkg, nil
+		}
 		return c.gop.Import(path)
 	}
 	return c.imp.Import(path)
