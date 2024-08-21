@@ -24,6 +24,7 @@ package gopbuild
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	goast "go/ast"
 	"go/types"
@@ -36,6 +37,7 @@ import (
 	"github.com/goplus/gop/token"
 	"github.com/goplus/igop"
 	"github.com/goplus/mod/modfile"
+	"golang.org/x/tools/go/gcexportdata"
 
 	_ "github.com/goplus/igop/pkg/bufio"
 	_ "github.com/goplus/igop/pkg/context"
@@ -58,6 +60,9 @@ import (
 	_ "github.com/goplus/igop/pkg/strconv"
 	_ "github.com/goplus/igop/pkg/strings"
 )
+
+//go:embed lib/*
+var lib embed.FS
 
 type Class = cl.Class
 
@@ -199,6 +204,9 @@ func isGopPackage(path string) bool {
 }
 
 func (c *Context) Import(path string) (*types.Package, error) {
+	if pkg, ok := lookupPackageFromLib(path); ok {
+		return pkg, nil
+	}
 	if isGopPackage(path) {
 		return c.gop.Import(path)
 	}
@@ -303,4 +311,25 @@ func (c *Context) loadPackage(srcDir string, pkgs map[string]*ast.Package) (*Pac
 		return nil, err
 	}
 	return &Package{c.fset, out}, nil
+}
+
+func lookupPackageFromLib(path string) (*types.Package, bool) {
+	file, err := lib.Open("lib/" + path + ".a")
+	if err != nil {
+		return nil, false
+	}
+	defer file.Close()
+
+	r, err := gcexportdata.NewReader(file)
+	if err != nil {
+		return nil, false
+	}
+
+	const primary = "<primary>"
+	imports := make(map[string]*types.Package)
+	pkg, err := gcexportdata.Read(r, token.NewFileSet(), imports, primary)
+	if err != nil {
+		return nil, false
+	}
+	return pkg, true
 }
